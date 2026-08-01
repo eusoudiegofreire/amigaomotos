@@ -56,6 +56,9 @@ const TEXT_PHASES = [
 // velocidade máxima "exibida" no tacômetro ao final do scrub — só decoração, não é telemetria real
 const DISPLAY_MAX_SPEED = 320;
 
+// espaço entre a base da logo e o topo do bloco de texto quando ele chega no topo (mobile)
+const MOBILE_TEXT_TOP_GAP = 20;
+
 // leitura de prefers-reduced-motion via useSyncExternalStore: evita setState em efeito
 // e mismatch de hidratação (servidor não tem window, então assume "motion normal" até o cliente confirmar)
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -104,6 +107,11 @@ export default function Hero() {
   const progressBarRef = useRef<HTMLDivElement>(null);
   const progressLabelRef = useRef<HTMLSpanElement>(null);
   const speedLabelRef = useRef<HTMLSpanElement>(null);
+  const logoRef = useRef<HTMLDivElement>(null);
+  const textBlockRef = useRef<HTMLDivElement>(null);
+  // curso vertical (em px, sempre <= 0) que o bloco de texto percorre no mobile: de 0
+  // (repouso, embaixo) até este valor (topo, logo abaixo da logo) — recalculado no resize
+  const mobileTextTravelRef = useRef(0);
 
   const [loadProgress, setLoadProgress] = useState(0);
   const [isReady, setIsReady] = useState(false);
@@ -169,6 +177,23 @@ export default function Hero() {
     if (currentImg) drawFrame(currentImg);
   }, [drawFrame]);
 
+  // mede (via layout, ignorando transform) a distância que o bloco de texto precisa
+  // percorrer no mobile: da posição de repouso (embaixo) até logo abaixo da logo (em cima).
+  // offsetTop/offsetHeight refletem só o layout, nunca o transform já aplicado — por isso
+  // dá pra remedir com segurança mesmo com o scroll já em andamento.
+  const recalcMobileTextTravel = useCallback(() => {
+    if (!isMobile) return;
+    const textEl = textBlockRef.current;
+    const logoEl = logoRef.current;
+    if (!textEl || !logoEl) return;
+
+    const restTop = textEl.offsetTop;
+    const topSafeY = logoEl.offsetTop + logoEl.offsetHeight + MOBILE_TEXT_TOP_GAP;
+
+    // nunca positivo: o bloco só sobe, nunca desce da posição de repouso
+    mobileTextTravelRef.current = Math.min(0, topSafeY - restTop);
+  }, [isMobile]);
+
   // calcula o progresso do scroll dentro da seção e atualiza canvas + textos + tacômetro
   const updateFrame = useCallback(() => {
     const section = sectionRef.current;
@@ -205,6 +230,16 @@ export default function Hero() {
       speedLabelRef.current.textContent = `${Math.round(progress * DISPLAY_MAX_SPEED)} KM/H`;
     }
 
+    // bloco de texto no mobile: sobe continuamente com o scroll (translateY, direto no
+    // DOM — mesmo motivo do tacômetro acima: nada disso deve passar por state do React).
+    // No desktop, garante que nenhum transform residual de uma sessão mobile anterior fique
+    // "grudado" (ex.: usuário redimensionou a janela cruzando o breakpoint).
+    if (textBlockRef.current) {
+      textBlockRef.current.style.transform = isMobile
+        ? `translateY(${(mobileTextTravelRef.current * progress).toFixed(1)}px)`
+        : "";
+    }
+
     // fase de texto ativa — só mexe no state do React quando ela realmente muda
     let phase = 0;
     for (let i = TEXT_PHASES.length - 1; i >= 0; i -= 1) {
@@ -214,7 +249,7 @@ export default function Hero() {
       }
     }
     setActivePhase((prev) => (prev === phase ? prev : phase));
-  }, [drawFrame, totalFrames]);
+  }, [drawFrame, totalFrames, isMobile]);
 
   const handleScroll = useCallback(() => {
     if (tickingRef.current) return;
@@ -255,6 +290,7 @@ export default function Hero() {
           // (ex.: cruzou o breakpoint no resize), o setState acima não gera re-render
           // sozinho, e sem isto o canvas ficaria parado no último frame da variante antiga.
           resizeCanvas();
+          recalcMobileTextTravel();
           if (reducedMotion) {
             const lastImg = imagesRef.current[totalFrames - 1];
             lastFrameRef.current = totalFrames - 1;
@@ -273,19 +309,22 @@ export default function Hero() {
     return () => {
       cancelled = true;
     };
-  }, [reducedMotion, totalFrames, frameSrc, resizeCanvas, updateFrame, drawFrame]);
+  }, [reducedMotion, totalFrames, frameSrc, resizeCanvas, updateFrame, drawFrame, recalcMobileTextTravel]);
 
   // ativa canvas + scroll listener assim que os frames terminam de carregar
   useEffect(() => {
     if (!isReady) return;
 
     resizeCanvas();
+    recalcMobileTextTravel();
 
     if (reducedMotion) {
       // modo reduzido: só o frame final, estático, com o texto da última fase já visível
+      // (sem scrub, então o bloco de texto fica parado na posição de repouso — sem transform)
       const lastImg = imagesRef.current[totalFrames - 1];
       lastFrameRef.current = totalFrames - 1;
       if (lastImg) drawFrame(lastImg);
+      if (textBlockRef.current) textBlockRef.current.style.transform = "";
       if (progressBarRef.current) progressBarRef.current.style.width = "100%";
       if (progressLabelRef.current) progressLabelRef.current.textContent = "100%";
       if (speedLabelRef.current) {
@@ -295,14 +334,30 @@ export default function Hero() {
     }
 
     updateFrame();
+
+    const handleResize = () => {
+      resizeCanvas();
+      recalcMobileTextTravel();
+    };
     window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", resizeCanvas, { passive: true });
+    window.addEventListener("resize", handleResize, { passive: true });
+    window.addEventListener("orientationchange", handleResize, { passive: true });
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", resizeCanvas);
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
     };
-  }, [isReady, reducedMotion, totalFrames, handleScroll, resizeCanvas, updateFrame, drawFrame]);
+  }, [
+    isReady,
+    reducedMotion,
+    totalFrames,
+    handleScroll,
+    resizeCanvas,
+    updateFrame,
+    drawFrame,
+    recalcMobileTextTravel,
+  ]);
 
   return (
     <section
@@ -317,17 +372,6 @@ export default function Hero() {
         {/* textura sutil de grão sobre o canvas — atmosfera, com muita moderação */}
         <div
           className="hero-grain pointer-events-none absolute inset-0 opacity-[0.05] mix-blend-overlay"
-          aria-hidden="true"
-        />
-
-        {/*
-          scrim só no mobile: o frame vertical preenche a tela inteira (cover), então não
-          sobra mais nenhuma margem preta atrás do texto como no desktop. Este gradiente
-          garante contraste do bloco de texto/tacômetro contra a moto/fumaça, seja qual
-          for o frame por trás naquele momento do scroll.
-        */}
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-1/2 bg-gradient-to-t from-ink via-ink/70 to-transparent md:hidden"
           aria-hidden="true"
         />
 
@@ -350,7 +394,10 @@ export default function Hero() {
         )}
 
         {/* logo fixa no topo do hero */}
-        <div className="absolute left-6 top-6 z-20 h-10 w-32 md:left-10 md:top-10 md:h-12 md:w-40">
+        <div
+          ref={logoRef}
+          className="absolute left-6 top-6 z-20 h-10 w-32 md:left-10 md:top-10 md:h-12 md:w-40"
+        >
           <Image
             src="/logo.png"
             alt="Amigão Motos"
@@ -362,22 +409,32 @@ export default function Hero() {
         </div>
 
         {/*
-          blocos de texto sincronizados com as fases do scroll. No mobile o frame 9:16
-          cobre a tela inteira (cover), então o texto fica ancorado mais perto do rodapé,
-          sobre o scrim acima, com tipografia um pouco menor pra não competir com a moto.
+          blocos de texto sincronizados com as fases do scroll. No desktop, posição fixa
+          (inalterado). No mobile, este container recebe um translateY contínuo via DOM
+          (updateFrame/recalcMobileTextTravel acima): sobe da posição de repouso — aqui,
+          embaixo — até logo abaixo da logo conforme o progresso do scroll vai de 0 a 1,
+          acompanhando a moto que acelera e sai de cena. Como a moto passa por trás do
+          texto durante essa subida, cada fase ganha um text-shadow no mobile (só ali,
+          sem sombra no desktop) pra manter a legibilidade contra qualquer frame.
         */}
-        <div className="absolute inset-x-0 bottom-24 z-20 px-5 md:bottom-32 md:px-16">
+        <div
+          ref={textBlockRef}
+          className="absolute inset-x-0 bottom-24 z-20 px-5 md:bottom-32 md:px-16"
+        >
           <div className="relative min-h-[150px] md:min-h-[210px]">
             {TEXT_PHASES.map((phase, index) => {
               const isActive = displayPhase === index;
               return (
                 <div
                   key={phase.titleLine1}
-                  className="absolute inset-0 transition-all duration-700 ease-out"
+                  className="absolute inset-0 transition-[opacity,transform] duration-700 ease-out"
                   style={{
                     opacity: isActive ? 1 : 0,
                     transform: isActive ? "translateY(0)" : "translateY(12px)",
                     pointerEvents: isActive ? "auto" : "none",
+                    textShadow: isMobile
+                      ? "0 2px 10px rgba(0,0,0,0.85), 0 1px 4px rgba(0,0,0,0.9)"
+                      : undefined,
                   }}
                   aria-hidden={!isActive}
                 >
