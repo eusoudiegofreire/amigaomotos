@@ -53,7 +53,7 @@ export default function Sobre() {
           <div className="mt-10 flex items-baseline gap-2">
             {/* TODO: ajustar para o número real de anos de oficina */}
             <TelemetryCounter to={10} className="font-display text-5xl text-paper md:text-6xl" />
-            <span className="font-display text-2xl text-paper md:text-3xl">+</span>
+            <span className="font-display ml-1 text-2xl text-paper md:text-3xl">+</span>
             <span className="font-body text-xs uppercase tracking-[0.3em] text-steel">
               Anos de oficina
             </span>
