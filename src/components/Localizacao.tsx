@@ -9,7 +9,7 @@ const FULL_ADDRESS = `${CONTACT.addressLine}, ${CONTACT.addressCity}`;
 // (funciona sem chave de API, só não é tão preciso quanto um pino manual).
 const MAP_EMBED_SRC = `https://maps.google.com/maps?q=${encodeURIComponent(
   FULL_ADDRESS
-)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+)}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
 
 export default function Localizacao() {
   return (
