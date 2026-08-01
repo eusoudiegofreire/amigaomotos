@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Anton, Inter } from "next/font/google";
+import { SERVICES } from "@/lib/services";
 import "./globals.css";
 
 // Fonte de display: condensada, industrial, caixa alta — usada nos títulos do hero
@@ -71,15 +72,28 @@ const jsonLd = {
   priceRange: "$$",
   address: {
     "@type": "PostalAddress",
+    streetAddress: "Av. Jamari, 3832 - Setor 2",
     addressLocality: "Ariquemes",
     addressRegion: "RO",
     addressCountry: "BR",
   },
+  // TODO: coordenadas ainda são o centroide de Ariquemes — geocodificar o endereço
+  // exato (Av. Jamari, 3832 - Setor 2) e substituir por lat/long precisos
   geo: {
     "@type": "GeoCoordinates",
     latitude: -9.9133,
     longitude: -63.0406,
   },
+  // gerado a partir de src/lib/services.ts — adicionar um serviço lá já reflete aqui
+  makesOffer: SERVICES.map((service) => ({
+    "@type": "Offer",
+    itemOffered: {
+      "@type": "Service",
+      name: service.title,
+      description: service.description,
+    },
+  })),
+  // TODO: adicionar openingHoursSpecification quando o horário real for confirmado
   sameAs: [],
 };
 
