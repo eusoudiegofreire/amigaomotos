@@ -23,7 +23,7 @@ export default function SectionHeader({
     <div className={`max-w-2xl ${className ?? ""}`}>
       <div className="flex items-center gap-3">
         {index && (
-          <span className="font-body text-xs tabular-nums tracking-[0.3em] text-graphite">
+          <span className="font-body text-xs tabular-nums tracking-[0.3em] text-steel/50">
             {index}
           </span>
         )}
