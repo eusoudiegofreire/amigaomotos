@@ -17,8 +17,8 @@ export default function Contato() {
           <span className="font-body text-xs uppercase tracking-[0.35em] text-steel">
             05 · Fale com a gente
           </span>
-          <h2 className="font-display mt-4 text-5xl uppercase leading-[0.95] tracking-tight text-paper sm:text-6xl md:text-8xl">
-            Traga sua <span className="text-steel">moto</span>
+          <h2 className="font-display mt-4 text-5xl uppercase leading-[0.95] tracking-tight sm:text-6xl md:text-8xl">
+            <span className="text-steel">Traga sua</span> <span className="text-white">moto</span>
           </h2>
           <p className="font-body mt-6 max-w-md text-sm text-steel md:text-base">
             Chame no WhatsApp ou ligue — a gente responde rápido e já adianta o
