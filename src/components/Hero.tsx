@@ -4,17 +4,30 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import Image from "next/image";
 
 /**
- * ===== CONFIGURAÇÃO DA SEQUÊNCIA DE FRAMES =====
- * Ajuste TOTAL_FRAMES e o padrão de nome em FRAME_SRC para bater
- * exatamente com o que existe em /public/frames.
+ * ===== CONFIGURAÇÃO DAS SEQUÊNCIAS DE FRAMES =====
+ * Duas variantes dedicadas: desktop (16:9, cover) e mobile (9:16, cover).
+ * Ajuste `total`/`src` de cada uma para bater com o que existe em
+ * /public/frames (desktop) e /public/frames-mobile (mobile).
  */
-const TOTAL_FRAMES = 126;
-const FRAME_SRC = (frameNumber: number) =>
-  `/frames/frame_${String(frameNumber).padStart(3, "0")}.jpg`; // frame_001.jpg ... frame_126.jpg
+const FRAME_VARIANTS = {
+  desktop: {
+    total: 126,
+    src: (frameNumber: number) =>
+      `/frames/frame_${String(frameNumber).padStart(3, "0")}.jpg`, // frame_001.jpg ... frame_126.jpg
+  },
+  mobile: {
+    total: 124,
+    src: (frameNumber: number) =>
+      `/frames-mobile/frame_${String(frameNumber).padStart(3, "0")}.jpg`, // frame_001.jpg ... frame_124.jpg
+  },
+} as const;
+
+type FrameVariantKey = keyof typeof FRAME_VARIANTS;
 
 /**
  * Blocos de texto (eyebrow + título em 2 linhas + subtítulo) sincronizados com o scroll.
  * `start` é o progresso (0 a 1) da seção em que a fase entra em cena.
+ * Compartilhado entre desktop e mobile — só o posicionamento/tamanho muda por breakpoint.
  */
 const TEXT_PHASES = [
   {
@@ -62,7 +75,8 @@ function getReducedMotionServerSnapshot() {
 }
 
 // detecção de mobile por largura de viewport (< 768px) — mesmo padrão do reduced-motion acima.
-// matchMedia já dispara "change" em resize e em orientationchange, então recalcula sozinho.
+// matchMedia já dispara "change" em resize e em orientationchange, então recalcula sozinho
+// (é o que decide, a cada momento, qual variante de frames deve estar carregada).
 const MOBILE_QUERY = "(max-width: 767px)";
 
 function subscribeToMobile(callback: () => void) {
@@ -105,32 +119,20 @@ export default function Hero() {
     getMobileServerSnapshot
   );
 
+  // variante ativa: decide qual pasta/sequência carregar — só uma por vez, nunca as duas
+  const variantKey: FrameVariantKey = isMobile ? "mobile" : "desktop";
+  const { total: totalFrames, src: frameSrc } = FRAME_VARIANTS[variantKey];
+
   // fase exibida: em modo reduzido sempre a última (estúdio com fumaça), sem depender de setState
   const displayPhase = reducedMotion ? TEXT_PHASES.length - 1 : activePhase;
 
-  // desenha um frame no canvas.
-  // Desktop: "object-fit: cover" (preenche a tela, cortando o excesso) — inalterado.
-  // Mobile: "object-fit: contain" pela largura — frame 16:9 inteiro e centralizado na
-  // vertical, com letterbox sólido em cima/embaixo (mesmo tom do fundo de estúdio dos
-  // frames), pra não cortar o movimento horizontal da moto.
+  // desenha um frame no canvas respeitando "object-fit: cover" (preenche sem distorcer).
+  // Mesma lógica pras duas variantes — cada uma já vem pré-enquadrada (16:9 desktop,
+  // 9:16 mobile), então cover nunca precisa cortar o movimento horizontal da moto.
   const drawFrame = useCallback((img: HTMLImageElement) => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx || !img.complete || img.naturalWidth === 0) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (isMobile) {
-      ctx.fillStyle = "#0a0a0a"; // --color-ink-soft — mesmo tom do fundo escuro de estúdio
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      const drawWidth = canvas.width;
-      const drawHeight = (img.naturalHeight / img.naturalWidth) * drawWidth;
-      const dy = (canvas.height - drawHeight) / 2;
-
-      ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, 0, dy, drawWidth, drawHeight);
-      return;
-    }
 
     const canvasRatio = canvas.width / canvas.height;
     const imgRatio = img.naturalWidth / img.naturalHeight;
@@ -150,8 +152,9 @@ export default function Hero() {
       sy = (img.naturalHeight - sh) / 2;
     }
 
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-  }, [isMobile]);
+  }, []);
 
   // redimensiona o canvas em pixels reais (devicePixelRatio) para não borrar em telas retina
   const resizeCanvas = useCallback(() => {
@@ -179,8 +182,8 @@ export default function Hero() {
         : 0;
 
     const frameIndex = Math.min(
-      TOTAL_FRAMES - 1,
-      Math.round(progress * (TOTAL_FRAMES - 1))
+      totalFrames - 1,
+      Math.round(progress * (totalFrames - 1))
     );
 
     // só redesenha quando o frame muda de fato — evita trabalho à toa a cada tick
@@ -211,7 +214,7 @@ export default function Hero() {
       }
     }
     setActivePhase((prev) => (prev === phase ? prev : phase));
-  }, [drawFrame]);
+  }, [drawFrame, totalFrames]);
 
   const handleScroll = useCallback(() => {
     if (tickingRef.current) return;
@@ -222,15 +225,21 @@ export default function Hero() {
     });
   }, [updateFrame]);
 
-  // pré-carrega os frames antes de ativar o efeito de scroll
+  // pré-carrega os frames da variante ativa (e só dela) antes de ativar o scroll-scrub.
+  // Se `variantKey` mudar (ex.: a janela cruzou os 768px durante um resize), este efeito
+  // reinicia: descarta os frames da variante anterior e carrega a nova do zero.
   useEffect(() => {
     let cancelled = false;
     let loadedCount = 0;
 
+    // troca de variante: limpa os frames antigos e zera o índice pra forçar um redesenho
+    imagesRef.current = [];
+    lastFrameRef.current = -1;
+
     // com movimento reduzido, carregamos só o frame final (estúdio com fumaça se dissipando)
     const frameNumbers = reducedMotion
-      ? [TOTAL_FRAMES]
-      : Array.from({ length: TOTAL_FRAMES }, (_, i) => i + 1);
+      ? [totalFrames]
+      : Array.from({ length: totalFrames }, (_, i) => i + 1);
 
     frameNumbers.forEach((frameNumber, arrayIndex) => {
       const img = new window.Image();
@@ -239,18 +248,32 @@ export default function Hero() {
         if (cancelled) return;
         loadedCount += 1;
         setLoadProgress(Math.round((loadedCount / frameNumbers.length) * 100));
-        if (loadedCount === frameNumbers.length) setIsReady(true);
-      };
-      img.src = FRAME_SRC(frameNumber);
 
-      const slot = reducedMotion ? TOTAL_FRAMES - 1 : arrayIndex;
+        if (loadedCount === frameNumbers.length) {
+          setIsReady(true);
+          // força o redesenho aqui: se `isReady` já era true antes da troca de variante
+          // (ex.: cruzou o breakpoint no resize), o setState acima não gera re-render
+          // sozinho, e sem isto o canvas ficaria parado no último frame da variante antiga.
+          resizeCanvas();
+          if (reducedMotion) {
+            const lastImg = imagesRef.current[totalFrames - 1];
+            lastFrameRef.current = totalFrames - 1;
+            if (lastImg) drawFrame(lastImg);
+          } else {
+            updateFrame();
+          }
+        }
+      };
+      img.src = frameSrc(frameNumber);
+
+      const slot = reducedMotion ? totalFrames - 1 : arrayIndex;
       imagesRef.current[slot] = img;
     });
 
     return () => {
       cancelled = true;
     };
-  }, [reducedMotion]);
+  }, [reducedMotion, totalFrames, frameSrc, resizeCanvas, updateFrame, drawFrame]);
 
   // ativa canvas + scroll listener assim que os frames terminam de carregar
   useEffect(() => {
@@ -260,8 +283,8 @@ export default function Hero() {
 
     if (reducedMotion) {
       // modo reduzido: só o frame final, estático, com o texto da última fase já visível
-      const lastImg = imagesRef.current[TOTAL_FRAMES - 1];
-      lastFrameRef.current = TOTAL_FRAMES - 1;
+      const lastImg = imagesRef.current[totalFrames - 1];
+      lastFrameRef.current = totalFrames - 1;
       if (lastImg) drawFrame(lastImg);
       if (progressBarRef.current) progressBarRef.current.style.width = "100%";
       if (progressLabelRef.current) progressLabelRef.current.textContent = "100%";
@@ -279,7 +302,7 @@ export default function Hero() {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", resizeCanvas);
     };
-  }, [isReady, reducedMotion, handleScroll, resizeCanvas, updateFrame, drawFrame]);
+  }, [isReady, reducedMotion, totalFrames, handleScroll, resizeCanvas, updateFrame, drawFrame]);
 
   return (
     <section
@@ -294,6 +317,17 @@ export default function Hero() {
         {/* textura sutil de grão sobre o canvas — atmosfera, com muita moderação */}
         <div
           className="hero-grain pointer-events-none absolute inset-0 opacity-[0.05] mix-blend-overlay"
+          aria-hidden="true"
+        />
+
+        {/*
+          scrim só no mobile: o frame vertical preenche a tela inteira (cover), então não
+          sobra mais nenhuma margem preta atrás do texto como no desktop. Este gradiente
+          garante contraste do bloco de texto/tacômetro contra a moto/fumaça, seja qual
+          for o frame por trás naquele momento do scroll.
+        */}
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-1/2 bg-gradient-to-t from-ink via-ink/70 to-transparent md:hidden"
           aria-hidden="true"
         />
 
@@ -328,14 +362,12 @@ export default function Hero() {
         </div>
 
         {/*
-          blocos de texto sincronizados com as fases do scroll.
-          No mobile, o canvas desenha o frame 16:9 inteiro (contain) centralizado na
-          vertical — a faixa da moto ocupa 56.25vw (proporção 16:9) centrada em 50% da
-          altura. O texto é reposicionado pra a margem preta logo abaixo dessa faixa
-          (top calculado em vw, sem JS) em vez de ficar por cima da moto.
+          blocos de texto sincronizados com as fases do scroll. No mobile o frame 9:16
+          cobre a tela inteira (cover), então o texto fica ancorado mais perto do rodapé,
+          sobre o scrim acima, com tipografia um pouco menor pra não competir com a moto.
         */}
-        <div className="absolute inset-x-0 bottom-28 z-20 px-6 max-md:top-[calc(50%_+_28.125vw_+_24px)] max-md:bottom-auto md:bottom-32 md:px-16">
-          <div className="relative min-h-[170px] md:min-h-[210px]">
+        <div className="absolute inset-x-0 bottom-24 z-20 px-5 md:bottom-32 md:px-16">
+          <div className="relative min-h-[150px] md:min-h-[210px]">
             {TEXT_PHASES.map((phase, index) => {
               const isActive = displayPhase === index;
               return (
@@ -349,14 +381,14 @@ export default function Hero() {
                   }}
                   aria-hidden={!isActive}
                 >
-                  <span className="font-body block text-xs uppercase tracking-[0.35em] text-steel">
+                  <span className="font-body block text-[11px] uppercase tracking-[0.3em] text-steel md:text-xs md:tracking-[0.35em]">
                     {phase.eyebrow}
                   </span>
-                  <h1 className="font-display mt-3 text-4xl uppercase leading-[0.95] tracking-tight sm:text-6xl md:text-7xl">
+                  <h1 className="font-display mt-3 text-[2.25rem] uppercase leading-[0.95] tracking-tight sm:text-6xl md:text-7xl">
                     <span className="block text-steel">{phase.titleLine1}</span>
                     <span className="block text-white">{phase.titleLine2}</span>
                   </h1>
-                  <p className="font-body mt-4 max-w-md text-sm text-steel md:text-base">
+                  <p className="font-body mt-3 max-w-xs text-sm text-steel md:mt-4 md:max-w-md md:text-base">
                     {phase.subtitle}
                   </p>
                 </div>
@@ -366,8 +398,8 @@ export default function Hero() {
         </div>
 
         {/* indicador de progresso — estilo tacômetro / barra de aceleração */}
-        <div className="absolute inset-x-0 bottom-0 z-20 border-t border-graphite/60 bg-ink/80 px-6 py-4 backdrop-blur-sm md:px-16">
-          <div className="flex items-center justify-between font-body text-[11px] uppercase tracking-[0.25em] text-steel">
+        <div className="absolute inset-x-0 bottom-0 z-20 border-t border-graphite/60 bg-ink/80 px-5 py-4 backdrop-blur-sm md:px-16">
+          <div className="flex items-center justify-between font-body text-[10px] uppercase tracking-[0.2em] text-steel md:text-[11px] md:tracking-[0.25em]">
             <span>Aceleração — Setor {displayPhase + 1}/{TEXT_PHASES.length}</span>
             <span ref={speedLabelRef} className="tabular-nums text-paper">
               0 KM/H
