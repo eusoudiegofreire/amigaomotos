@@ -61,7 +61,7 @@ export default function Sobre() {
         </Reveal>
 
         <Reveal delayMs={120}>
-          <div className="relative aspect-[4/5] overflow-hidden border border-graphite/60 bg-ink-soft">
+          <div className="relative aspect-[4/3] overflow-hidden border border-graphite/60 bg-ink-soft">
             <div
               className="hero-grain pointer-events-none absolute inset-0 opacity-[0.06] mix-blend-overlay"
               aria-hidden="true"
