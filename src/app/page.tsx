@@ -11,8 +11,8 @@ import Footer from "@/components/Footer";
 export default function Home() {
   return (
     <main>
-      <Hero />
       <Nav />
+      <Hero />
       <HeroSeam />
       <Servicos />
       <Sobre />

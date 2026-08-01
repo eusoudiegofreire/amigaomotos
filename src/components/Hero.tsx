@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import Image from "next/image";
 
 /**
  * ===== CONFIGURAÇÃO DAS SEQUÊNCIAS DE FRAMES =====
@@ -393,20 +392,18 @@ export default function Hero() {
           </div>
         )}
 
-        {/* logo fixa no topo do hero */}
+        {/*
+          âncora invisível no lugar onde a logo do hero costumava ficar. O header fixo
+          (Nav.tsx) agora é a única logo visível da página, inclusive sobre o hero — mas
+          este elemento continua aqui, sem ser desenhado, porque `recalcMobileTextTravel`
+          usa seu offsetTop/offsetHeight como teto pra até onde o texto sobe no mobile.
+          Removê-lo quebraria essa medição.
+        */}
         <div
           ref={logoRef}
-          className="absolute left-6 top-6 z-20 h-10 w-32 md:left-10 md:top-10 md:h-12 md:w-40"
-        >
-          <Image
-            src="/logo.png"
-            alt="Amigão Motos"
-            fill
-            priority
-            sizes="160px"
-            className="object-contain object-left"
-          />
-        </div>
+          className="invisible absolute left-6 top-6 h-10 w-32 md:left-10 md:top-10 md:h-12 md:w-40"
+          aria-hidden="true"
+        />
 
         {/*
           blocos de texto sincronizados com as fases do scroll. No desktop, posição fixa
