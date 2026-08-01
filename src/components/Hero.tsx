@@ -8,33 +8,35 @@ import Image from "next/image";
  * Ajuste TOTAL_FRAMES e o padrão de nome em FRAME_SRC para bater
  * exatamente com o que existe em /public/frames.
  */
-const TOTAL_FRAMES = 240;
+const TOTAL_FRAMES = 126;
 const FRAME_SRC = (frameNumber: number) =>
-  `/frames/frame_${String(frameNumber).padStart(3, "0")}.png`; // frame_001.png ... frame_240.png
+  `/frames/frame_${String(frameNumber).padStart(3, "0")}.png`; // frame_001.png ... frame_126.png
 
 /**
- * Blocos de texto (eyebrow + título + subtítulo) sincronizados com o scroll.
+ * Blocos de texto (eyebrow + título em 2 linhas + subtítulo) sincronizados com o scroll.
  * `start` é o progresso (0 a 1) da seção em que a fase entra em cena.
- * Copy é placeholder — troque pelo texto definitivo.
  */
 const TEXT_PHASES = [
   {
     start: 0,
-    eyebrow: "AMIGÃO MOTOS — ARIQUEMES/RO",
-    title: "PLACEHOLDER TÍTULO 01",
-    subtitle: "Placeholder de subtítulo para a fase inicial do hero.",
+    eyebrow: "OFICINA DE MOTOS · ARIQUEMES-RO",
+    titleLine1: "SUA MOTO",
+    titleLine2: "EM BOAS MÃOS",
+    subtitle: "Serviço de verdade, feito por quem entende de moto.",
   },
   {
     start: 0.4,
-    eyebrow: "PLACEHOLDER EYEBROW 02",
-    title: "PLACEHOLDER TÍTULO 02",
-    subtitle: "Placeholder de subtítulo para a fase intermediária do hero.",
+    eyebrow: "REVISÃO · MOTOR · ELÉTRICA · PNEUS",
+    titleLine1: "PRECISÃO",
+    titleLine2: "EM CADA PEÇA",
+    subtitle: "Diagnóstico honesto e mão de obra que você pode confiar.",
   },
   {
     start: 0.8,
-    eyebrow: "PLACEHOLDER EYEBROW 03",
-    title: "PLACEHOLDER TÍTULO 03",
-    subtitle: "Placeholder de subtítulo para a fase final do hero.",
+    eyebrow: "AMIGÃO MOTOS",
+    titleLine1: "REFERÊNCIA",
+    titleLine2: "NO SETOR 2",
+    subtitle: "A oficina que os motociclistas de Ariquemes recomendam.",
   },
 ] as const;
 
@@ -292,7 +294,7 @@ export default function Hero() {
               const isActive = displayPhase === index;
               return (
                 <div
-                  key={phase.title}
+                  key={phase.titleLine1}
                   className="absolute inset-0 transition-all duration-700 ease-out"
                   style={{
                     opacity: isActive ? 1 : 0,
@@ -304,8 +306,9 @@ export default function Hero() {
                   <span className="font-body block text-xs uppercase tracking-[0.35em] text-steel">
                     {phase.eyebrow}
                   </span>
-                  <h1 className="font-display mt-3 text-4xl uppercase leading-[0.95] tracking-tight text-paper sm:text-6xl md:text-7xl">
-                    {phase.title}
+                  <h1 className="font-display mt-3 text-4xl uppercase leading-[0.95] tracking-tight sm:text-6xl md:text-7xl">
+                    <span className="block text-steel">{phase.titleLine1}</span>
+                    <span className="block text-white">{phase.titleLine2}</span>
                   </h1>
                   <p className="font-body mt-4 max-w-md text-sm text-steel md:text-base">
                     {phase.subtitle}
