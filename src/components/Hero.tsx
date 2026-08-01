@@ -10,7 +10,7 @@ import Image from "next/image";
  */
 const TOTAL_FRAMES = 126;
 const FRAME_SRC = (frameNumber: number) =>
-  `/frames/frame_${String(frameNumber).padStart(3, "0")}.png`; // frame_001.png ... frame_126.png
+  `/frames/frame_${String(frameNumber).padStart(3, "0")}.jpg`; // frame_001.jpg ... frame_126.jpg
 
 /**
  * Blocos de texto (eyebrow + título em 2 linhas + subtítulo) sincronizados com o scroll.
