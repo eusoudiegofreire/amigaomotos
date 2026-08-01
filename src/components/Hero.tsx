@@ -61,6 +61,24 @@ function getReducedMotionServerSnapshot() {
   return false;
 }
 
+// detecção de mobile por largura de viewport (< 768px) — mesmo padrão do reduced-motion acima.
+// matchMedia já dispara "change" em resize e em orientationchange, então recalcula sozinho.
+const MOBILE_QUERY = "(max-width: 767px)";
+
+function subscribeToMobile(callback: () => void) {
+  const mediaQuery = window.matchMedia(MOBILE_QUERY);
+  mediaQuery.addEventListener("change", callback);
+  return () => mediaQuery.removeEventListener("change", callback);
+}
+
+function getMobileSnapshot() {
+  return window.matchMedia(MOBILE_QUERY).matches;
+}
+
+function getMobileServerSnapshot() {
+  return false;
+}
+
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -81,15 +99,38 @@ export default function Hero() {
     getReducedMotionSnapshot,
     getReducedMotionServerSnapshot
   );
+  const isMobile = useSyncExternalStore(
+    subscribeToMobile,
+    getMobileSnapshot,
+    getMobileServerSnapshot
+  );
 
   // fase exibida: em modo reduzido sempre a última (estúdio com fumaça), sem depender de setState
   const displayPhase = reducedMotion ? TEXT_PHASES.length - 1 : activePhase;
 
-  // desenha um frame no canvas respeitando "object-fit: cover" (preenche sem distorcer)
+  // desenha um frame no canvas.
+  // Desktop: "object-fit: cover" (preenche a tela, cortando o excesso) — inalterado.
+  // Mobile: "object-fit: contain" pela largura — frame 16:9 inteiro e centralizado na
+  // vertical, com letterbox sólido em cima/embaixo (mesmo tom do fundo de estúdio dos
+  // frames), pra não cortar o movimento horizontal da moto.
   const drawFrame = useCallback((img: HTMLImageElement) => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx || !img.complete || img.naturalWidth === 0) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (isMobile) {
+      ctx.fillStyle = "#0a0a0a"; // --color-ink-soft — mesmo tom do fundo escuro de estúdio
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const drawWidth = canvas.width;
+      const drawHeight = (img.naturalHeight / img.naturalWidth) * drawWidth;
+      const dy = (canvas.height - drawHeight) / 2;
+
+      ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, 0, dy, drawWidth, drawHeight);
+      return;
+    }
 
     const canvasRatio = canvas.width / canvas.height;
     const imgRatio = img.naturalWidth / img.naturalHeight;
@@ -109,9 +150,8 @@ export default function Hero() {
       sy = (img.naturalHeight - sh) / 2;
     }
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-  }, []);
+  }, [isMobile]);
 
   // redimensiona o canvas em pixels reais (devicePixelRatio) para não borrar em telas retina
   const resizeCanvas = useCallback(() => {
@@ -287,8 +327,14 @@ export default function Hero() {
           />
         </div>
 
-        {/* blocos de texto sincronizados com as fases do scroll */}
-        <div className="absolute inset-x-0 bottom-28 z-20 px-6 md:bottom-32 md:px-16">
+        {/*
+          blocos de texto sincronizados com as fases do scroll.
+          No mobile, o canvas desenha o frame 16:9 inteiro (contain) centralizado na
+          vertical — a faixa da moto ocupa 56.25vw (proporção 16:9) centrada em 50% da
+          altura. O texto é reposicionado pra a margem preta logo abaixo dessa faixa
+          (top calculado em vw, sem JS) em vez de ficar por cima da moto.
+        */}
+        <div className="absolute inset-x-0 bottom-28 z-20 px-6 max-md:top-[calc(50%_+_28.125vw_+_24px)] max-md:bottom-auto md:bottom-32 md:px-16">
           <div className="relative min-h-[170px] md:min-h-[210px]">
             {TEXT_PHASES.map((phase, index) => {
               const isActive = displayPhase === index;
