@@ -35,7 +35,7 @@ const TEXT_PHASES = [
     start: 0.8,
     eyebrow: "AMIGÃO MOTOS",
     titleLine1: "REFERÊNCIA",
-    titleLine2: "NO SETOR 2",
+    titleLine2: "EM ARIQUEMES",
     subtitle: "A oficina que os motociclistas de Ariquemes recomendam.",
   },
 ] as const;
