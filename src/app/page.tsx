@@ -1,6 +1,5 @@
 import Hero from "@/components/Hero";
 import Nav from "@/components/Nav";
-import HeroSeam from "@/components/HeroSeam";
 import Servicos from "@/components/Servicos";
 import Sobre from "@/components/Sobre";
 import Galeria from "@/components/Galeria";
@@ -13,7 +12,6 @@ export default function Home() {
     <main>
       <Nav />
       <Hero />
-      <HeroSeam />
       <Servicos />
       <Sobre />
       <Galeria />
