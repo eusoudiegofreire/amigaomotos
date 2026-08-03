@@ -81,7 +81,7 @@ export default function Galeria() {
   return (
     <section
       id="galeria"
-      className="scroll-mt-16 border-t border-graphite/60 bg-ink px-5 py-20 md:scroll-mt-20 md:px-16 md:py-28"
+      className="scroll-mt-16 border-t border-graphite bg-ink px-5 py-20 md:scroll-mt-20 md:px-16 md:py-28"
     >
       <div className="mx-auto max-w-[1400px]">
         <SectionHeader

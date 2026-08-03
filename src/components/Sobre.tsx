@@ -27,9 +27,15 @@ export default function Sobre() {
   return (
     <section
       id="sobre"
-      className="scroll-mt-16 border-t border-graphite/60 bg-ink px-5 py-20 md:scroll-mt-20 md:px-16 md:py-28"
+      className="relative scroll-mt-16 overflow-hidden border-t border-graphite bg-ink-soft px-5 py-20 md:scroll-mt-20 md:px-16 md:py-28"
     >
-      <div className="mx-auto grid max-w-[1400px] gap-12 md:grid-cols-2 md:items-center md:gap-16">
+      {/* leve variação de tom (ink-soft) + grão sutil — separa esta seção do preto puro
+          de Serviços/Galeria sem introduzir nenhuma cor nova */}
+      <div
+        className="hero-grain pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-overlay"
+        aria-hidden="true"
+      />
+      <div className="relative mx-auto grid max-w-[1400px] gap-12 md:grid-cols-2 md:items-center md:gap-16">
         <Reveal>
           <SectionHeader index="02" eyebrow="Quem somos" title="A Oficina" />
 

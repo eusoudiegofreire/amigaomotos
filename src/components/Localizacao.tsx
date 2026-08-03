@@ -15,9 +15,13 @@ export default function Localizacao() {
   return (
     <section
       id="localizacao"
-      className="scroll-mt-16 border-t border-graphite/60 bg-ink px-5 py-20 md:scroll-mt-20 md:px-16 md:py-28"
+      className="relative scroll-mt-16 overflow-hidden border-t border-graphite bg-ink-soft px-5 py-20 md:scroll-mt-20 md:px-16 md:py-28"
     >
-      <div className="mx-auto max-w-[1400px]">
+      <div
+        className="hero-grain pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-overlay"
+        aria-hidden="true"
+      />
+      <div className="relative mx-auto max-w-[1400px]">
         <SectionHeader index="04" eyebrow="Onde estamos" title="Localização" />
 
         <div className="mt-12 grid gap-8 md:grid-cols-[1fr_1.4fr] md:gap-12">

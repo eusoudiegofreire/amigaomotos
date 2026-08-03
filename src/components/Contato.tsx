@@ -5,7 +5,7 @@ export default function Contato() {
   return (
     <section
       id="contato"
-      className="relative scroll-mt-16 overflow-hidden border-t border-graphite/60 bg-ink px-5 py-24 md:scroll-mt-20 md:px-16 md:py-32"
+      className="relative scroll-mt-16 overflow-hidden border-t border-graphite bg-ink px-5 py-24 md:scroll-mt-20 md:px-16 md:py-32"
     >
       <div
         className="hero-grain pointer-events-none absolute inset-0 opacity-[0.05] mix-blend-overlay"

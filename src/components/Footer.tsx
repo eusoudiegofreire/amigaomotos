@@ -11,8 +11,12 @@ const LINKS = [
 
 export default function Footer() {
   return (
-    <footer className="border-t border-graphite/60 bg-ink px-5 py-14 md:px-16 md:py-16">
-      <div className="mx-auto grid max-w-[1400px] gap-12 md:grid-cols-[1.2fr_1fr_1fr]">
+    <footer className="relative overflow-hidden border-t border-graphite bg-ink-soft px-5 py-14 md:px-16 md:py-16">
+      <div
+        className="hero-grain pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-overlay"
+        aria-hidden="true"
+      />
+      <div className="relative mx-auto grid max-w-[1400px] gap-12 md:grid-cols-[1.2fr_1fr_1fr]">
         <div>
           <div className="relative h-9 w-32">
             <Image
@@ -68,7 +72,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="mx-auto mt-12 max-w-[1400px] border-t border-graphite/60 pt-6">
+      <div className="relative mx-auto mt-12 max-w-[1400px] border-t border-graphite/60 pt-6">
         <p className="font-body text-[11px] uppercase tracking-[0.2em] text-graphite">
           Amigão Motos — Ariquemes/RO
         </p>
